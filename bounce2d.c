@@ -5,6 +5,7 @@
 * user input: s slow down x component, S: slow y component
 * f speed up x component, F: speed y component
 * Q quit a: user wall left d: user wall right
+* g pause
 *
 * blocks on read, but timer tick sends SIGALRM caught by ball_move
 * build: cc bounce2d.c -lcurses -o bounce2d
@@ -18,6 +19,7 @@
 struct ppball the_ball ;
 int cnt = 3;
 bool game_over = 0;
+bool isp = false;
 /** the main loop **/
 void set_up();
 void wrap_up();
@@ -54,45 +56,67 @@ int main()
                 else if ( c == 'F' ) the_ball.y_ttm--;
                 else if ( c == 'S' ) the_ball.y_ttm++;
                 else if ( c == 'a' ) {
-                	dir = -1;
-                	move_user_wall(dir);
-                }
+                        dir = -1;
+                        if(!isp)move_user_wall(dir);
+                    }
                 else if ( c == 'd' ) {
-                	dir = 1;
-                	move_user_wall(dir);
-                }
+                        dir = 1;
+                        if(!isp)move_user_wall(dir);
+                    }
                 else if ( c == 'j' ) {
-                	if ( --user_wall_len <= 1 ){
-                		user_wall_len = 1;
-                		move_user_wall(0);
-                	}
-                }
+                        if ( --user_wall_len <= 1 ){
+                                user_wall_len = 1;
+                                //move_user_wall(0);
+                        }
+                    }
                 else if ( c == 'k' ) {
-                	if ( ++user_wall_len >= 15 ){
-                		user_wall_len = 15;
-                		move_user_wall(0);
-                	}
-                }
+                        if ( ++user_wall_len >= 15 ){
+                                user_wall_len = 15;
+                                //move_user_wall(0);
+                        }
+                    }
                 else if ( c == 'Q' ){
-                			set_ticker( 0 );
+                            set_ticker( 0 );
                             endwin();
                             return 0;
-                }
+		    }
+		   else if(c == 'p'){
+		              game_over = 0;
+		            //mvaddstr(15, 15, " ");
+		            //mvaddstr(16, 15, " ");
+		            //mvaddstr(17, 15, " ");
+		            //refresh();
+		                 break;
+		    }
+		   else if(c == 'g'){
+		    	if(!isp){                    //如果当前为非暂停状态，转到暂停状态
+		    		set_ticker(0);
+		    		mvaddstr(13, 20, "pause...");
+		    		refresh();
+		    		isp = true;
+		    	}
+		    	else {                       //如果当前为暂停状态，转到非暂停状态
+		    		set_ticker( 1000 / TICKS_PER_SEC );
+		    		mvaddstr(13, 20, "        ");
+		    		refresh();
+		    		isp = false;
+		    	}
+		    }	
          }
-         while(game_over){
-                        c = getchar();
-                        if(c == 'q'){
-                                set_ticker( 0 );
-                                endwin();
-                                return 0;
-                        }
-                        else if(c == 'p'){
-                                game_over = 0; 
-                                //mvaddstr(15, 15, "               ");
-                                //mvaddstr(16, 15, "               ");
-                                //mvaddstr(17, 15, "               ");
-                                refresh();
-                        }
+       while(game_over){
+             c = getchar();
+             if(c == 'Q'){
+             	set_ticker( 0 );
+                    endwin();
+                    return 0;
+                }
+             else if(c == 'p'){
+                    game_over = 0;
+                    //mvaddstr(15, 15, " ");
+                    //mvaddstr(16, 15, " ");
+                    //mvaddstr(17, 15, " ");
+                    //refresh();
+                }
          }
 
    // wrap_up();
@@ -105,7 +129,7 @@ void set_up()
 */
 {
     void ball_move(int);
-	int i;
+    int i;
     the_ball.y_pos = Y_INIT;
     the_ball.x_pos = X_INIT;
     the_ball.y_ttg = the_ball.y_ttm = Y_TTM ;
@@ -121,14 +145,16 @@ void set_up()
 
     signal( SIGINT , SIG_IGN );
     for(i = 0;i < 50;i ++){
-    	mvhline(i, 0, ' ', 40);
+            mvhline(i, 0, ' ', 40);
     }
     /* draw wall */
     mvhline(5, 5, '_', 40);
     mvvline(6, 5, '|', 15);
     mvvline(6, 45, '|', 15);
 
-    mvprintw( 4, 5, "score:%d left:s right:d -speed:s +speed:f +wall_len:j -wall_len:k quit:Q", 0); /* infomation */
+    mvprintw( 2, 5, "score:%d", 0); /* infomation */
+    mvprintw( 3, 5, "s : mov_left     d : mov_right     s : -speed     f : +speed");
+    mvprintw( 4, 5, "j : +wall_len    k : -wall_len     quit:Q");
     mvaddch( the_ball.y_pos, the_ball.x_pos, the_ball.symbol ); /* init ball */
     mvhline(20, user_wall_pos, '_', user_wall_len); /* init user_wall */
     refresh();
@@ -200,7 +226,7 @@ int bounce_or_lose(struct ppball *bp)
         return_val = 1 ;
     } else if ( (bp->y_pos == BOT_ROW) && (bp->x_pos >= user_wall_left && bp->x_pos <= user_wall_right) ){
         bp->y_dir = -1;
-        mvprintw( 4, 5, "score:%d", score++);
+        mvprintw( 2, 5, "score:%d", score++);
         return_val = 1;
     } else if (bp->y_pos > BOT_ROW)
         wrap_up();
@@ -229,14 +255,14 @@ void move_user_wall(int dir)
         user_wall_pos = wall_left;
     if( user_wall_pos >= wall_right - user_wall_len + 1 )
         user_wall_pos = wall_right - user_wall_len;
-	mvhline( 20, 0, BLANK, 50);
+        mvhline( 20, 0, BLANK, 50);
     mvhline( 20, user_wall_pos, USER_WALL, user_wall_len + 1 );
     
     /*if (dir == 1 && user_wall_right < wall_right -1 )
-        mvhline( 20, user_wall_left, BLANK, 1 );
-    if (dir == -1 && user_wall_left > wall_left )
-        mvhline( 20, user_wall_right+1, BLANK, 1 );
-    */
+	mvhline( 20, user_wall_left, BLANK, 1 );
+	if (dir == -1 && user_wall_left > wall_left )
+	mvhline( 20, user_wall_right+1, BLANK, 1 );
+     */
     move(LINES - 1, COLS - 1);
     refresh();
 }
