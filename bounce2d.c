@@ -12,7 +12,7 @@
 
 #include <curses.h>
 #include <signal.h>
-#include                 <sys/time.h>
+#include <sys/time.h>
 #include "bounce.h"
 
 struct ppball the_ball ;
@@ -43,36 +43,57 @@ set_ticker( n_msecs )
 int main()
 {
     while(1){
-	    int c, dir = 0;
+         int c, dir = 0;
 
-	    set_up();
-	    
-	    while (!game_over){
-		c = getchar();
-		if ( c == 'f' ) the_ball.x_ttm--;
-		else if ( c == 's' ) the_ball.x_ttm++;
-		else if ( c == 'F' ) the_ball.y_ttm--;
-		else if ( c == 'S' ) the_ball.y_ttm++;
-		else if ( c == 'a' ) { dir = -1; move_user_wall(dir); }
-		else if ( c == 'd' ) { dir = 1; move_user_wall(dir); }
-		else if ( c == 'j' ) { if ( --user_wall_len <= 1 ) user_wall_len = 1; }
-		else if ( c == 'k' ) { if ( ++user_wall_len >= 15 ) user_wall_len = 15; }
-	    }
-	    while(game_over){
-			c = getchar();
-			if(c == 'q'){
-				set_ticker( 0 );
-				endwin();
-				return 0;
-			}
-			else if(c == 'p'){
-				game_over = 0;
-				mvaddstr(15, 15, "                ");
-				mvaddstr(16, 15, "                ");
-				mvaddstr(17, 15, "                ");
-				refresh();
-			}
-   	   }
+         set_up();
+        
+         while (!game_over){
+                c = getchar();
+                if ( c == 'f' ) the_ball.x_ttm--;
+                else if ( c == 's' ) the_ball.x_ttm++;
+                else if ( c == 'F' ) the_ball.y_ttm--;
+                else if ( c == 'S' ) the_ball.y_ttm++;
+                else if ( c == 'a' ) {
+                	dir = -1;
+                	move_user_wall(dir);
+                }
+                else if ( c == 'd' ) {
+                	dir = 1;
+                	move_user_wall(dir);
+                }
+                else if ( c == 'j' ) {
+                	if ( --user_wall_len <= 1 ){
+                		user_wall_len = 1;
+                		move_user_wall(0);
+                	}
+                }
+                else if ( c == 'k' ) {
+                	if ( ++user_wall_len >= 15 ){
+                		user_wall_len = 15;
+                		move_user_wall(0);
+                	}
+                }
+                else if ( c == 'Q' ){
+                			set_ticker( 0 );
+                            endwin();
+                            return 0;
+                }
+         }
+         while(game_over){
+                        c = getchar();
+                        if(c == 'q'){
+                                set_ticker( 0 );
+                                endwin();
+                                return 0;
+                        }
+                        else if(c == 'p'){
+                                game_over = 0; 
+                                //mvaddstr(15, 15, "               ");
+                                //mvaddstr(16, 15, "               ");
+                                //mvaddstr(17, 15, "               ");
+                                refresh();
+                        }
+         }
 
    // wrap_up();
     }
@@ -84,7 +105,7 @@ void set_up()
 */
 {
     void ball_move(int);
-
+	int i;
     the_ball.y_pos = Y_INIT;
     the_ball.x_pos = X_INIT;
     the_ball.y_ttg = the_ball.y_ttm = Y_TTM ;
@@ -99,6 +120,9 @@ void set_up()
     echo();
 
     signal( SIGINT , SIG_IGN );
+    for(i = 0;i < 50;i ++){
+    	mvhline(i, 0, ' ', 40);
+    }
     /* draw wall */
     mvhline(5, 5, '_', 40);
     mvvline(6, 5, '|', 15);
@@ -122,7 +146,7 @@ void wrap_up()
     mvaddstr(17, 15, "Q:quit");
     refresh();
     //while(1){
-    //    if ( getchar() == 'Q') break;
+    // if ( getchar() == 'Q') break;
         //else solve();
     //}
     game_over = 1;
@@ -205,14 +229,14 @@ void move_user_wall(int dir)
         user_wall_pos = wall_left;
     if( user_wall_pos >= wall_right - user_wall_len + 1 )
         user_wall_pos = wall_right - user_wall_len;
-
+	mvhline( 20, 0, BLANK, 50);
     mvhline( 20, user_wall_pos, USER_WALL, user_wall_len + 1 );
     
-    if (dir == 1 && user_wall_right < wall_right -1 )
+    /*if (dir == 1 && user_wall_right < wall_right -1 )
         mvhline( 20, user_wall_left, BLANK, 1 );
     if (dir == -1 && user_wall_left > wall_left )
         mvhline( 20, user_wall_right+1, BLANK, 1 );
-    
+    */
     move(LINES - 1, COLS - 1);
     refresh();
 }
