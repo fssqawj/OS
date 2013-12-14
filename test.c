@@ -80,24 +80,28 @@ int main()
          //int c, dir = 0;
 
          set_up();
-        
+        if(!(start_color() == OK))return ;
+		init_pair(1,COLOR_GREEN,COLOR_BLACK);
+		init_pair(2,COLOR_BLUE,COLOR_BLACK);
+		init_pair(3,COLOR_YELLOW,COLOR_BLACK);
+		//init_pair(3,COLOR_WHITE,COLOR_BLUE);
          while (!game_over){
                 c = getchar();
 				if(c == 'a'){
-					if(!isp)mov_my_plane(0,-2);
+					if(!isp && !game_over)mov_my_plane(0,-2);
 				}
 				if(c == 'd'){
-					if(!isp)mov_my_plane(0,2);
+					if(!isp && !game_over)mov_my_plane(0,2);
 				}
 				if(c == 'w'){
-					if(!isp)mov_my_plane(-2,0);
+					if(!isp && !game_over)mov_my_plane(-2,0);
 				}
 				if(c == 's'){
-					if(!isp)mov_my_plane(2,0);
+					if(!isp && !game_over)mov_my_plane(2,0);
 				}
 					
 				if(c == 'j'){
-					if(!isp)add_boom();
+					if(!isp && !game_over)add_boom();
 				}
 				if(c == 'c'){
 					if(!isp){
@@ -130,7 +134,7 @@ int main()
                                  isp = true;
                          }
                          else { //如果当前为暂停状态，转到非暂停状态
-                                 set_ticker( 1000 / TICKS_PER_SEC );
+                                 set_ticker(20);
                                  mvaddstr(13, 20, "        ");
                                  refresh();
                                  isp = false;
@@ -159,24 +163,39 @@ int main()
 
 void clear_screen(){
 	int i,j;
+	set_ticker(0);
 	for(i = 0;i < 105;i ++){
 		for(j = 0;j < 105;j ++){
 			ani[i][j].tem = ani[i][j].wit = 0;
 		}
 	}
-	for(i = 0;i < LINES;i ++){
-		for(j = 0;j < COLS - 1;j ++){
-			mvaddch(i,j,' ');
+	for(i = LINES;i >= 0;i --){
+		if(i < LINES){
+			for(j = 1;j < 45;j ++){
+				mvaddch(i + 1,j,' ');
+			}
 		}
+		attron(COLOR_PAIR(3));
+		for(j = 1;j < 45;j ++){
+			mvaddch(i,j,'*');
+		}
+		attroff(COLOR_PAIR(3));
+		refresh();
+		usleep(20000);
 	}
-	for(i = 0;i < LINES - 1;i ++){
+	for(j = 1;j < 45;j ++){
+				mvaddch(0,j,' ');
+			}
+	/*for(i = 0;i < LINES - 1;i ++){
 		mvaddch(i,0,'|');
 		mvaddch(i,45,'|');
-	}	
+	}
+	*/
 	add_my_plane();
 	mvprintw(20,50,"score:%d", score);
 	mvprintw(19,50,"clear chance:%d",clear_chance);
 	refresh();
+	set_ticker(20);
 }
 	
 /********************************************************/
@@ -188,31 +207,41 @@ void judge_lose(){
 	y = my_plane.y;
 	
 	if(x > 1 && y > 1){
-		if(ani[x - 1][y].tem > 0 || ani[x][y - 1].tem > 0|| ani[x][y + 1].tem > 0 || ani[x - 1][y - 2].tem > 0 || ani[x - 1][y + 2].tem > 0){
-			if(ani[x - 1][y].atc == -1){
+		if(ani[x - 1][y].tem > 0 || ani[x][y - 1].tem > 0|| ani[x][y - 2].tem > 0|| ani[x][y + 1].tem > 0|| ani[x][y + 2].tem > 0 || ani[x - 1][y - 2].tem > 0 || ani[x - 1][y + 2].tem > 0){
+			if(ani[x - 1][y].tem > 0 && ani[x - 1][y].atc == -1){
 				clear_chance ++;
 				del_plane(x - 1,y);
 				ani[x - 1][y].tem = 0;
 			}
-			else if(ani[x][y - 1].atc == -1){
+			else if(ani[x][y - 1].tem > 0 && ani[x][y - 1].atc == -1){
 				clear_chance ++;
 				del_plane(x,y - 1);
 				ani[x][y - 1].tem = 0;
 			}
-			else if(ani[x][y + 1].atc == -1){
+			else if(ani[x][y + 1].tem > 0 && ani[x][y + 1].atc == -1){
 				clear_chance ++;
 				del_plane(x,y + 1);
 				ani[x][y + 1].tem = 0;
 			}
-			else if(ani[x - 1][y - 2].atc == -1){
+			else if(ani[x - 1][y - 2].tem > 0 && ani[x - 1][y - 2].atc == -1){
 				clear_chance ++;
 				del_plane(x - 1,y - 2);
 				ani[x - 1][y - 2].tem = 0;
 			}
-			else if(ani[x - 1][y + 2].atc == -1){
+			else if(ani[x - 1][y + 2].tem > 0 && ani[x - 1][y + 2].atc == -1){
 				clear_chance ++;
 				del_plane(x - 1,y + 2);
 				ani[x - 1][y + 2].tem = 0;
+			}
+			else if(ani[x][y + 2].tem > 0 && ani[x][y + 2].atc == -1){
+				clear_chance ++;
+				del_plane(x,y + 2);
+				ani[x][y + 2].tem = 0;
+			}
+			else if(ani[x][y - 2].tem > 0 && ani[x][y - 2].atc == -1){
+				clear_chance ++;
+				del_plane(x,y - 2);
+				ani[x][y - 2].tem = 0;
 			}
 			else wrap_up();
 		}
@@ -238,8 +267,10 @@ void add_plane(int x,int y,int f){
 		mvaddstr(x + 1,y," o ");
 	}
 	else {
+		attron(COLOR_PAIR(3)|A_BOLD|A_BLINK);
 		mvaddstr(x,y,"* *");
 		mvaddstr(x + 1,y," _ ");
+		attroff(COLOR_PAIR(3)|A_BOLD|A_BLINK);
 	}
 }
 
@@ -268,7 +299,9 @@ void mov_plane(){
 		if(hapnes == 0){
 			ani[0][y].atc = -1;
 		}
+		attron(COLOR_PAIR(2));
 		add_plane(0,y,ani[0][y].atc);
+		attroff(COLOR_PAIR(2));
 	}
 	
 	//从上往下扫描子弹并移动
@@ -276,7 +309,9 @@ void mov_plane(){
 		for(j = 0;j < 40;j ++){
 			if(isb[i][j]){
 				mvaddch(i,j,' ');
+				attron(COLOR_PAIR(3));
 				mvaddch(i - 1,j,'*');
+				attron(COLOR_PAIR(3));
 				isb[i][j] = false;
 				if(i >=1)isb[i - 1][j] = true;
 			}
@@ -300,14 +335,20 @@ void mov_plane(){
 				ani[i][j].tem --;
 				if(ani[i][j].tem == 0){
 					del_plane(i,j);
+					attron(COLOR_PAIR(2));
 					add_plane(i + 1,j,ani[i][j].atc);
+					attroff(COLOR_PAIR(2)); 
 					ani[i + 1][j].tem = ani[i + 1][j].wit = ani[i][j].wit;
 					ani[i + 1][j].atc = ani[i][j].atc;
+					ani[i][j].atc = 0;
+					ani[i][j].wit = 0;
 				}
 			}
 		}
 	}
+	attron(COLOR_PAIR(1)); 
 	mov_my_plane(0,0);
+	attroff(COLOR_PAIR(1)); 
 	//判断我方飞机是否装上敌机
 	judge_lose();
 	mvprintw(19,50,"clear chance:%d", clear_chance);
@@ -352,7 +393,9 @@ void mov_my_plane(int x,int y){
 	my_plane.y += y;
 	my_plane.x = judge_x(my_plane.x);
 	my_plane.y = judge_y(my_plane.y);
+	attron(COLOR_PAIR(1));
 	add_my_plane();
+	attroff(COLOR_PAIR(1));
 	
 	move(LINES - 1,COLS - 1);
 	refresh();
