@@ -8,7 +8,7 @@
 *			  w -move the plane up	
 * 			  g -pause..
 *			  p -when game over ,play it again
-* 
+* 			  c -claer screen
 * build: cc test.c -lcurses -o test
 */
 
@@ -37,7 +37,9 @@ void set_up();					   //初始化函数
 void wrap_up();					   //游戏结束，后续处理函数
 void mov_my_plane();			   //移动我方飞机位置
 void add_boom();				   //发射子弹
-
+void del_plane(int x,int y);
+void clear_screen();
+void add_my_plane();
 
 struct ani_plane ani[105][105];	   //记录屏幕上是否有飞机，以及飞机移动的等待时间
 
@@ -47,6 +49,10 @@ int nex_plane = 0;				   //通过取模控制下一架敌机出现
 
 
 struct my my_plane;				   //我方飞机的位置信息
+
+int score = 0;
+
+int clear_chance = 0;
 
 set_ticker( n_msecs )
 {
@@ -92,6 +98,14 @@ int main()
 					
 				if(c == 'j'){
 					if(!isp)add_boom();
+				}
+				if(c == 'c'){
+					if(!isp){
+						if(clear_chance > 0){
+							clear_screen();
+							clear_chance --;
+						}
+					}
 				}
 				
 				//此步是必要的，之前的getchar()函数会影响程序的执行，这里实际上已经game_over
@@ -143,6 +157,28 @@ int main()
     }
 }
 
+void clear_screen(){
+	int i,j;
+	for(i = 0;i < 105;i ++){
+		for(j = 0;j < 105;j ++){
+			ani[i][j].tem = ani[i][j].wit = 0;
+		}
+	}
+	for(i = 0;i < LINES;i ++){
+		for(j = 0;j < COLS - 1;j ++){
+			mvaddch(i,j,' ');
+		}
+	}
+	for(i = 0;i < LINES - 1;i ++){
+		mvaddch(i,0,'|');
+		mvaddch(i,45,'|');
+	}	
+	add_my_plane();
+	mvprintw(20,50,"score:%d", score);
+	mvprintw(19,50,"clear chance:%d",clear_chance);
+	refresh();
+}
+	
 /********************************************************/
 //判断飞机移动过程中是否撞上了敌机
 void judge_lose(){
@@ -152,7 +188,34 @@ void judge_lose(){
 	y = my_plane.y;
 	
 	if(x > 1 && y > 1){
-		if(ani[x - 1][y].tem > 0 || ani[x][y - 1].tem > 0|| ani[x][y + 1].tem > 0 || ani[x - 1][y - 2].tem > 0 || ani[x - 1][y + 2].tem > 0)wrap_up();
+		if(ani[x - 1][y].tem > 0 || ani[x][y - 1].tem > 0|| ani[x][y + 1].tem > 0 || ani[x - 1][y - 2].tem > 0 || ani[x - 1][y + 2].tem > 0){
+			if(ani[x - 1][y].atc == -1){
+				clear_chance ++;
+				del_plane(x - 1,y);
+				ani[x - 1][y].tem = 0;
+			}
+			else if(ani[x][y - 1].atc == -1){
+				clear_chance ++;
+				del_plane(x,y - 1);
+				ani[x][y - 1].tem = 0;
+			}
+			else if(ani[x][y + 1].atc == -1){
+				clear_chance ++;
+				del_plane(x,y + 1);
+				ani[x][y + 1].tem = 0;
+			}
+			else if(ani[x - 1][y - 2].atc == -1){
+				clear_chance ++;
+				del_plane(x - 1,y - 2);
+				ani[x - 1][y - 2].tem = 0;
+			}
+			else if(ani[x - 1][y + 2].atc == -1){
+				clear_chance ++;
+				del_plane(x - 1,y + 2);
+				ani[x - 1][y + 2].tem = 0;
+			}
+			else wrap_up();
+		}
 	}
 }
 
@@ -170,9 +233,13 @@ void add_plane(int x,int y,int f){
 		mvaddstr(x,y,"0 0");
 		mvaddstr(x + 1,y," o ");
 	}
-	else {
+	else if(f == 2){
 		mvaddstr(x,y,"8 8");
 		mvaddstr(x + 1,y," o ");
+	}
+	else {
+		mvaddstr(x,y,"* *");
+		mvaddstr(x + 1,y," _ ");
 	}
 }
 
@@ -187,16 +254,20 @@ bool candel(int i,int j){
 }
 //移动我方飞机
 void mov_plane(){
-	int i,j,y,wit;
+	int i,j,y,wit,hapnes;
 	signal( SIGALRM , SIG_IGN );
 	
 	//每隔20个alarm信号，增加一架敌机
-	if(nex_plane % 60 == 0){
+	if(nex_plane % 40 == 0){
 		y = rand() % 40 + 1;
-		wit = rand() % 40 + 2;
+		wit = rand() % 30 + 2;
+		hapnes = rand() % 4;
 		ani[0][y].tem = ani[0][y].wit = wit;
 		if(wit > 30)ani[0][y].atc = 2;
 		else ani[0][y].atc = 1;
+		if(hapnes == 0){
+			ani[0][y].atc = -1;
+		}
 		add_plane(0,y,ani[0][y].atc);
 	}
 	
@@ -236,9 +307,10 @@ void mov_plane(){
 			}
 		}
 	}
-	
+	mov_my_plane(0,0);
 	//判断我方飞机是否装上敌机
 	judge_lose();
+	mvprintw(19,50,"clear chance:%d", clear_chance);
 	nex_plane ++;
 	move(LINES - 1,COLS - 1);
 	refresh();
@@ -329,6 +401,8 @@ void set_up()
 	my_plane.y = 20;
 	add_my_plane();
 	
+	mvprintw(20,50,"score:%d", score);
+	mvprintw(19,50,"clear chance:%d",clear_chance);
 	memset(isb,false,sizeof(isb));
 	
 	
